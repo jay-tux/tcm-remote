@@ -1,2 +1,5 @@
 node_modules/
 config.json
+tcm.db
+.idea/
+.env

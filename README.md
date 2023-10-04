@@ -2,18 +2,17 @@
 *A simple remote to sync TCM (CML) scripts*
 
 ## Set up
-1. Create a `config.json` file. See below for the reference.
-2. Run `npm install` to install all dependencies.
-3. Run `npm run server` to start the server.
+1. Create a `.env` file. See below for the reference.
+2. Create an empty `tcm.db` file.
+3. Run `npm install` to install all dependencies.
+4. Run `npx prisma db push` to sync the database schema.
+5. Run `npm run server` to start the server.
 
-## Config file
+## Env file
 **All** keys are required!
 
-```json
-{
-  "scripts": "/full/path/to/scripts/cache/",
-  "port": "5432"
-}
+```dotenv
+STORAGE=/full/path/to/where/you/want/everything/to/be/stored
 ```
 
 ## Recommendations

@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../tcm.db"
+}
+
+model User {
+  id        Int         @id @default(autoincrement())
+  user      String      @unique
+  email     String      @unique
+  pass      String
+  verified  Boolean     @default(false)
+  Session   Session[]
+  GroupUser GroupUser[]
+  Directory Directory[]
+}
+
+model Session {
+  userId Int
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  cookie String @id
+}
+
+model Group {
+  id                 Int          @id @default(autoincrement())
+  group              String       @unique
+  joinable           Boolean      @default(false)
+  canCreateDirectory Boolean      @default(false)
+  GroupUser          GroupUser[]
+  DGPermission       Permission[]
+}
+
+model GroupUser {
+  groupId Int
+  userId  Int
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([userId, groupId])
+}
+
+model Directory {
+  id           Int          @id @default(autoincrement())
+  name         String
+  ownerId      Int
+  parentId     Int?
+  parent       Directory?   @relation("DirectoryTree", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  Directory    Directory[]  @relation("DirectoryTree")
+  Owner        User         @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  File         File[]
+  DGPermission Permission[]
+}
+
+model File {
+  id       Int       @id @default(autoincrement())
+  name     String
+  parentId Int
+  parent   Directory @relation(fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([name, parentId])
+}
+
+model Permission {
+  dirId       Int
+  groupId     Int
+  allowRead   Boolean   @default(true)
+  allowWrite  Boolean   @default(false)
+  allowCreate Boolean   @default(false)
+  allowDelete Boolean   @default(false)
+  Directory   Directory @relation(fields: [dirId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  Group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([dirId, groupId])
+}
