@@ -1,6 +1,8 @@
 import {PrismaClient} from '@prisma/client';
 import * as crypt from 'bcrypt';
 import * as uuid from 'uuid';
+import {default_user, load} from "./env";
+import {importer} from './import';
 
 export const prisma = new PrismaClient()
 
@@ -14,21 +16,42 @@ const hash = async (str: string) => {
     return await crypt.hash(str, salt);
 }
 
+let everyone: number;
+
 export const init = async () => {
     const groupCount = await prisma.group.count();
     const userCount = await prisma.user.count();
 
-    if(groupCount !== 0 && userCount !== 0) return; // done
+    if(groupCount !== 0 && userCount !== 0) {
+        everyone = (await prisma.group.findUniqueOrThrow({ where: { group: "@everyone" } })).id;
+    }
+    else {
 
-    const group = groupCount === 0 ?
-        await prisma.group.create({ data: { group: "admin" } }) :
-        await prisma.group.findUnique({ where: { group: "admin" } });
+        everyone = (await prisma.group.create({data: {group: "@everyone"}})).id;
 
-    const user = userCount === 0 ?
-        await prisma.user.create({ data: { user: "admin", email: "admin@test.com", pass: await hash("admin"), verified: true } }) :
-        await prisma.user.findUnique({ where: { user: "admin" } });
+        const group = groupCount === 0 ?
+            await prisma.group.create({data: {group: "admin"}}) :
+            await prisma.group.findUniqueOrThrow({where: {group: "admin"}});
 
-    await prisma.groupUser.create({ data: { userId: user.id, groupId: group.id } });
+        const user = userCount === 0 ?
+            await prisma.user.create({
+                data: {
+                    user: default_user.name,
+                    email: default_user.email,
+                    pass: await hash(default_user.pass),
+                    verified: true
+                }
+            }) :
+            await prisma.user.findUniqueOrThrow({where: {user: default_user.name}});
+
+        await prisma.groupUser.create({data: {userId: user.id, groupId: group.id}});
+        await prisma.groupUser.create({data: {userId: user.id, groupId: everyone}});
+    }
+
+    const dirCount = await prisma.directory.count()
+    if(dirCount === 0) {
+        await importer(load);
+    }
 }
 
 export const newUser = (name: string, pass: string, email: string, accepted: boolean) =>
@@ -52,6 +75,8 @@ export const isAdmin = async (user: number) => {
             }
         }
     });
+    if(groupsPre === null) return false;
+
     const groups = groupsPre.GroupUser.map(
         ({group}) => group.group
     );
@@ -71,7 +96,7 @@ export const groupsFor = (userId: number) =>
     prisma.groupUser.findMany({ where: { userId: userId }, include: { group: true } });
 
 export const checkUser = (name: string, pass: string) =>
-    prisma.user.findUnique({ where: { user: name } }).then(user =>
+    prisma.user.findUniqueOrThrow({ where: { user: name } }).then(user =>
         crypt.compare(pass, user.pass).then(res => {
             if(res === true) return limitUser(user)
             else throw "pass"
@@ -83,7 +108,7 @@ export const createSession = (id: number) =>
         .then(session => session.cookie);
 
 export const checkSession = (cookie: string) =>
-    prisma.session.findUnique({ where: { cookie: cookie }, include: { user: true } })
+    prisma.session.findUniqueOrThrow({ where: { cookie: cookie }, include: { user: true } })
         .then(session => limitUser(session.user));
 
 export const endSessions = (user: number) =>

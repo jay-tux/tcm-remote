@@ -1,4 +1,3 @@
-import * as config from "../config.json";
 import fs from "fs";
 import {Request, Response} from "express";
 import {groupsFor, isAdmin, prisma, User} from "../db";
@@ -11,8 +10,8 @@ export const getFile = async (req: Request, res: Response, user: User) => {
 
     let file: File;
     try {
-        file = await prisma.file.findUnique({ where: { id: +id } });
-        const dir = await prisma.directory.findUnique({ where: { id: file.parentId } });
+        file = await prisma.file.findUniqueOrThrow({ where: { id: +id } });
+        const dir = await prisma.directory.findUniqueOrThrow({ where: { id: file.parentId } });
         const perms = await prisma.permission.findMany({ where: { dirId: dir.id } });
         const groups = (await groupsFor(user.id)).map(x => x.groupId);
 

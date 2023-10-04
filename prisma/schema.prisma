@@ -55,6 +55,8 @@ model Directory {
   Owner        User         @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   File         File[]
   DGPermission Permission[]
+
+  @@unique([name, parentId])
 }
 
 model File {
