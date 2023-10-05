@@ -1,8 +1,9 @@
 import {Request} from "express";
 import {
+    adminUser,
     checkUser,
     createSession,
-    endSessions,
+    endSessions, everyoneGroup,
     isAdmin,
     joinGroup,
     mkdir,
@@ -43,6 +44,7 @@ export const register = async (req: Request) => {
         const user = await newUser(name, pass, mail, !config.requireAccept);
         const group = await newGroup(name);
         await joinGroup(user.id, group.id);
+        await joinGroup(user.id, everyoneGroup());
         if(config.autoCreateDirectory) {
             await mkdir(name, null, user.id, mkPerms().addAll(group.id));
         }
@@ -129,7 +131,7 @@ export const verifyUser = async (req: Request, user: User) => {
     try {
         await prisma.user.update({
             where: {
-                id: +`${id}`
+                id: `${id}`
             },
             data: {
                 verified: true
@@ -143,19 +145,29 @@ export const verifyUser = async (req: Request, user: User) => {
 export const deleteUser = async (req: Request, user: User) => {
     if(!(await isAdmin(user.id))) throw { status: 403, reason: "You don't have permission to verify users." };
 
+    // TODO: fix broken owners
     const id = req.body['user'];
 
     if (id == null)
         throw {status: 404, reason: "Missing user or user is not a valid ID."};
 
     try {
+        await prisma.directory.updateMany({
+            where: {
+                ownerId: `${id}`
+            },
+            data: {
+                ownerId: adminUser()
+            }
+        })
+
         await prisma.user.delete({
             where: {
-                id: +`${id}`
+                id: `${id}`
             }
         });
     } catch (err) {
         console.log(err);
-        throw {status: 404, reason: "User doesn't exist."};
+        throw {status: 404, reason: "User doesn't exist or database constraints are preventing their removal."};
     }
 }

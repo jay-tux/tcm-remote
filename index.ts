@@ -1,8 +1,10 @@
 import express, {NextFunction, Request, Response} from 'express';
 import * as config from './config.json';
-import {init} from "./db";
+import {init, mkPerms} from "./db";
 import {urlencoded, json} from "express";
 import {apiRouter} from "./api/endpoints";
+
+console.log(mkPerms());
 
 const app = express();
 

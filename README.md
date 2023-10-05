@@ -18,6 +18,7 @@ LOAD=name:/directory/to/load:true:false;second_name:/directory/to/load:false:tru
 DEFAULT_USER=default_created_user_name
 DEFAULT_EMAIL=email_for_default_user
 DEFAULT_PASS=password_for_default_user
+SEPARATOR=:
 ```
 
  | Key             | Default value    | Meaning                                                                                                                                                 |
@@ -27,8 +28,9 @@ DEFAULT_PASS=password_for_default_user
  | `DEFAULT_USER`  | `admin`          | The username for the default-created user (this user has admin rights).                                                                                 |
  | `DEFAULT_EMAIL` | `admin@test.com` | The e-mail address for the default-created user.                                                                                                        |
  | `DEFAULT_PASS`  | `admin`          | The password for the default-created user.                                                                                                              |
+ | `SEPARATOR`     | `:`              | The separator for fields in the `LOAD` data                                                                                                             |
 
-The format for the `LOAD` key is a list, separated by semicolons (`;`). Each element has four parts, separated by colons (`:`):
+The format for the `LOAD` key is a list, separated by semicolons (`;`). Each element has four parts, separated by whatever `SEPARATOR` container (default: `:`):
 1. The name of the (virtual) directory in the cache where you want this directory to be loaded (use forward slashes (`/`) to create a tree-structure in the cache);
 2. The full path to the local directory containing the scripts. Only files with the `.cml` extension will be considered;
 3. Whether the path should be loaded recursively (`true` means all subdirectories will be loaded recursively and created as subdirectories in the cache). If `false`, no subdirectories will be loaded.

@@ -1,5 +1,6 @@
 node_modules/
 tcm.db
+tcm.db-journal
 .idea/
 .env
 .cache/

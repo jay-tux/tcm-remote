@@ -1,15 +1,15 @@
 import {Request, Response, Router} from "express";
 import {checkSession, listDirectories, User} from "../db";
 import {deleteUser, listGroups, listUsers, login, logout, register, self, verifyUser} from "./user";
-import {list} from "./list";
+import {list, tree} from "./list";
 import {getFile} from "./file";
 
-const checkHeaders = async (req: Request, res: Response) => {
+const checkHeaders = async (req: Request, res: Response, accept: string = 'application/json') => {
     res.contentType('application/json');
 
-    if(req.headers.accept !== undefined && req.headers.accept !== 'application/json') {
+    if(req.headers.accept !== undefined && req.headers.accept !== accept) {
         console.log(`Got unexpected accept-header: '${req.headers.accept}'`)
-        throw {status: 406, reason: 'API endpoints only provide JSON.'};
+        throw {status: 406, reason: `Endpoint ${req.originalUrl} only responds with '${accept}'.`};
     }
     if(Object.keys(req.body).length !== 0 && !req.headers["content-type"].startsWith('application/json')) {
         console.log(`Got unexpected content-type-header: '${req.headers["content-type"]}'`);
@@ -34,6 +34,8 @@ export const checkAuth = async (req: Request, allowUnverified: boolean = false) 
     catch(err) {
         if(err.status == undefined && err.reason == undefined)
             throw { status: 403, reason: "Invalid authorization token." };
+        else
+            throw err
     }
 }
 
@@ -43,14 +45,11 @@ const endpoint = <T>(callback: (req: Request) => Promise<T>) => {
     }
 }
 
-const modEndpoint = <T>(callback: (req: Request, res: Response, session: User) => Promise<T>) => {
+const modEndpoint = <T>(callback: (req: Request, res: Response, session: User) => Promise<T>, accept: string) => {
     return async (req: Request, res: Response) => {
-        await checkHeaders(req, res);
-        await checkAuth(req);
-        promiseToEp(req, res, checkHeaders(req, res)
-            .then(() => checkAuth(req))
-            .then(auth => callback(req, res, auth))
-        );
+        await checkHeaders(req, res, accept);
+        const user = await checkAuth(req);
+        promiseToEp(req, res, callback(req, res, user));
     }
 }
 
@@ -72,7 +71,8 @@ export const apiRouter = () => {
     router.get('/groups', authEndpoint(listGroups));
 
     router.get('/list', authEndpoint(list));
-    router.get('/file/:id', modEndpoint(getFile));
+    router.get('/tree', authEndpoint(tree));
+    router.get('/file/:id', modEndpoint(getFile, 'text/cml'));
 
     return router;
 }

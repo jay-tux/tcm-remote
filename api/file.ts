@@ -10,7 +10,7 @@ export const getFile = async (req: Request, res: Response, user: User) => {
 
     let file: File;
     try {
-        file = await prisma.file.findUniqueOrThrow({ where: { id: +id } });
+        file = await prisma.file.findUniqueOrThrow({ where: { id: id } });
         const dir = await prisma.directory.findUniqueOrThrow({ where: { id: file.parentId } });
         const perms = await prisma.permission.findMany({ where: { dirId: dir.id } });
         const groups = (await groupsFor(user.id)).map(x => x.groupId);

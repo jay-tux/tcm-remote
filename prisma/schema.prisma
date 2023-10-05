@@ -11,7 +11,7 @@ datasource db {
 }
 
 model User {
-  id        Int         @id @default(autoincrement())
+  id        String      @id @default(cuid())
   user      String      @unique
   email     String      @unique
   pass      String
@@ -19,16 +19,17 @@ model User {
   Session   Session[]
   GroupUser GroupUser[]
   Directory Directory[]
+  File      File[]
 }
 
 model Session {
-  userId Int
+  userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   cookie String @id
 }
 
 model Group {
-  id                 Int          @id @default(autoincrement())
+  id                 String       @id @default(cuid())
   group              String       @unique
   joinable           Boolean      @default(false)
   canCreateDirectory Boolean      @default(false)
@@ -37,22 +38,22 @@ model Group {
 }
 
 model GroupUser {
-  groupId Int
-  userId  Int
-  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  groupId String
+  userId  String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([userId, groupId])
 }
 
 model Directory {
-  id           Int          @id @default(autoincrement())
+  id           String       @id @default(cuid())
   name         String
-  ownerId      Int
-  parentId     Int?
+  ownerId      String
+  parentId     String?
   parent       Directory?   @relation("DirectoryTree", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   Directory    Directory[]  @relation("DirectoryTree")
-  Owner        User         @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  Owner        User         @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   File         File[]
   DGPermission Permission[]
 
@@ -60,17 +61,19 @@ model Directory {
 }
 
 model File {
-  id       Int       @id @default(autoincrement())
+  id       String    @id @default(cuid())
   name     String
-  parentId Int
+  parentId String
+  ownerId  String
   parent   Directory @relation(fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([name, parentId])
 }
 
 model Permission {
-  dirId       Int
-  groupId     Int
+  dirId       String
+  groupId     String
   allowRead   Boolean   @default(true)
   allowWrite  Boolean   @default(false)
   allowCreate Boolean   @default(false)

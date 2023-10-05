@@ -6,7 +6,9 @@ import {importer} from './import';
 
 export const prisma = new PrismaClient()
 
-export type User = { id: number, user: string, pass: string, email: string, verified: boolean }
+export type ID = string;
+
+export type User = { id: ID, user: string, pass: string, email: string, verified: boolean }
 const limitUser = (u: User): User => ({
     id: u.id, user: u.user, pass: u.pass, email: u.email, verified: u.verified
 });
@@ -16,7 +18,11 @@ const hash = async (str: string) => {
     return await crypt.hash(str, salt);
 }
 
-let everyone: number;
+let everyone: ID;
+let admin: ID;
+
+export const everyoneGroup = () => everyone;
+export const adminUser = () => admin;
 
 export const init = async () => {
     const groupCount = await prisma.group.count();
@@ -24,6 +30,7 @@ export const init = async () => {
 
     if(groupCount !== 0 && userCount !== 0) {
         everyone = (await prisma.group.findUniqueOrThrow({ where: { group: "@everyone" } })).id;
+        admin = (await prisma.user.findUniqueOrThrow({ where: { user: default_user.name } })).id;
     }
     else {
 
@@ -44,13 +51,15 @@ export const init = async () => {
             }) :
             await prisma.user.findUniqueOrThrow({where: {user: default_user.name}});
 
+        admin = user.id;
+
         await prisma.groupUser.create({data: {userId: user.id, groupId: group.id}});
         await prisma.groupUser.create({data: {userId: user.id, groupId: everyone}});
     }
 
     const dirCount = await prisma.directory.count()
     if(dirCount === 0) {
-        await importer(load);
+        await importer(load, admin, everyone);
     }
 }
 
@@ -64,7 +73,7 @@ export const newUser = (name: string, pass: string, email: string, accepted: boo
         }
     }));
 
-export const isAdmin = async (user: number) => {
+export const isAdmin = async (user: ID) => {
     const groupsPre = await prisma.user.findUnique({
         where: { id: user },
         include: {
@@ -86,13 +95,13 @@ export const isAdmin = async (user: number) => {
 export const newGroup = (name: string) =>
     prisma.group.create({ data: { group: name } });
 
-export const joinGroup = (userId: number, groupId: number) =>
+export const joinGroup = (userId: ID, groupId: ID) =>
     prisma.groupUser.create({ data: { userId: userId, groupId: groupId } });
 
-export const leaveGroup = (userId: number, groupId: number) =>
+export const leaveGroup = (userId: ID, groupId: ID) =>
     prisma.groupUser.delete({ where: { userId_groupId: { userId: userId, groupId: groupId } } });
 
-export const groupsFor = (userId: number) =>
+export const groupsFor = (userId: ID) =>
     prisma.groupUser.findMany({ where: { userId: userId }, include: { group: true } });
 
 export const checkUser = (name: string, pass: string) =>
@@ -103,7 +112,7 @@ export const checkUser = (name: string, pass: string) =>
         })
     );
 
-export const createSession = (id: number) =>
+export const createSession = (id: ID) =>
     prisma.session.create({ data: { userId: id, cookie: uuid.v4() } })
         .then(session => session.cookie);
 
@@ -111,13 +120,13 @@ export const checkSession = (cookie: string) =>
     prisma.session.findUniqueOrThrow({ where: { cookie: cookie }, include: { user: true } })
         .then(session => limitUser(session.user));
 
-export const endSessions = (user: number) =>
+export const endSessions = (user: ID) =>
     prisma.session.deleteMany({ where: { userId: user } })
         .then(_ => {});
 
 export type Perms = {
     groups: {
-        [groupId: number]: {
+        [groupId: ID]: {
             rd: boolean,
             wrt: boolean,
             crt: boolean,
@@ -125,18 +134,19 @@ export type Perms = {
         }
     },
 
-    addRead: (groupId: number) => Perms;
-    addWrite: (groupId: number) => Perms;
-    addCreate: (groupId: number) => Perms;
-    addDelete: (groupId: number) => Perms;
-    addAll: (groupId: number) => Perms;
+    addNone: (groupId: ID) => Perms;
+    addRead: (groupId: ID) => Perms;
+    addWrite: (groupId: ID) => Perms;
+    addCreate: (groupId: ID) => Perms;
+    addDelete: (groupId: ID) => Perms;
+    addAll: (groupId: ID) => Perms;
 }
 
 type PermUpdate = Partial<{
     [key in 'rd' | 'wrt' | 'crt' | 'del']: boolean;
 }>;
 
-const checkOrAdd = (p: Perms, groupId: number, updates: PermUpdate) => {
+const checkOrAdd = (p: Perms, groupId: ID, updates: PermUpdate) => {
     if(p.groups === undefined) {
         console.log('p.groups === undefined???')
         p.groups = {}
@@ -152,16 +162,21 @@ const checkOrAdd = (p: Perms, groupId: number, updates: PermUpdate) => {
     return p;
 }
 
-export const mkPerms = () => ({
-    groups: {},
-    addRead: groupId => checkOrAdd(this, groupId, { rd: true }),
-    addWrite: groupId => checkOrAdd(this, groupId, { wrt: true }),
-    addCreate: groupId => checkOrAdd(this, groupId, { crt: true }),
-    addDelete: groupId => checkOrAdd(this, groupId, { del: true }),
-    addAll: groupId => checkOrAdd(this, groupId, { rd: true, wrt: true, crt: true, del: true })
-}) as Perms;
+export const mkPerms = (): Perms => {
+    let res = {} as Perms;
+    res['groups'] = {};
 
-export const mkdir = async (name: string, parentId: number|null, ownerId: number, perms: Perms) => {
+    res['addNone'] = groupId => checkOrAdd(res, groupId, {});
+    res['addRead'] = groupId => checkOrAdd(res, groupId, {rd: true});
+    res['addWrite'] = groupId => checkOrAdd(res, groupId, {wrt: true});
+    res['addCreate'] = groupId => checkOrAdd(res, groupId, {crt: true});
+    res['addDelete'] = groupId => checkOrAdd(res, groupId, {del: true});
+    res['addAll'] = groupId => checkOrAdd(res, groupId, {rd: true, wrt: true, crt: true, del: true});
+
+    return res;
+};
+
+export const mkdir = async (name: string, parentId: ID|null, ownerId: ID, perms: Perms) => {
     const dir = await prisma.directory.create({
         data: {
             name: name,
@@ -171,7 +186,7 @@ export const mkdir = async (name: string, parentId: number|null, ownerId: number
     });
 
     await Promise.all(Object.keys(perms.groups).map(group => {
-        const groupId = +group;
+        const groupId = group;
         const perm = perms.groups[groupId];
         return prisma.permission.create({
             data: {
