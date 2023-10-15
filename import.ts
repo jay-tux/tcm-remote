@@ -73,9 +73,6 @@ export const importer = async (cache: LoadCache, owner: ID, everyone: ID) => {
     const read = mkPerms().addRead(everyone);
     const none = mkPerms().addNone(everyone);
 
-    console.log(read);
-    console.log(none);
-
     await seqMap(cache, async entry => {
         const perms = entry.readable ? read : none;
         const dirId = await createTree(entry.target, owner, perms);

@@ -3,6 +3,7 @@ import {checkSession, listDirectories, User} from "../db";
 import {deleteUser, listGroups, listUsers, login, logout, register, self, verifyUser} from "./user";
 import {list, tree} from "./list";
 import {getFile} from "./file";
+import {errorHeader} from '../config.json';
 
 const checkHeaders = async (req: Request, res: Response, accept: string = 'application/json') => {
     res.contentType('application/json');
@@ -17,9 +18,9 @@ const checkHeaders = async (req: Request, res: Response, accept: string = 'appli
     }
 }
 
-const promiseToEp = <T>(req: Request, res: Response, prom: Promise<T>) => {
+const promiseToEp = <T>(_: Request, res: Response, prom: Promise<T>) => {
     prom.then(r => { res.status(200).send(r === undefined ? {} : r) })
-        .catch(err => res.status(err.status).send(err));
+        .catch(err => res.set(errorHeader, err['reason']).status(err.status).send(err));
 }
 
 export const checkAuth = async (req: Request, allowUnverified: boolean = false) => {

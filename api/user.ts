@@ -27,7 +27,6 @@ export const login = async (req: Request) => {
         const session = await createSession(user.id);
         return ({success: true, session: session});
     } catch (err) {
-        console.log(err);
         throw {status: 409, reason: "Invalid username or password."};
     }
 }
@@ -51,7 +50,6 @@ export const register = async (req: Request) => {
         return { success: true, session: await createSession(user.id) };
     }
     catch(err) {
-        console.log(err)
         throw { status: 400, reason: "Couldn't create user (e-mail or username might already be in use)." }
     }
 }
@@ -167,7 +165,6 @@ export const deleteUser = async (req: Request, user: User) => {
             }
         });
     } catch (err) {
-        console.log(err);
         throw {status: 404, reason: "User doesn't exist or database constraints are preventing their removal."};
     }
 }

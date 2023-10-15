@@ -148,7 +148,6 @@ type PermUpdate = Partial<{
 
 const checkOrAdd = (p: Perms, groupId: ID, updates: PermUpdate) => {
     if(p.groups === undefined) {
-        console.log('p.groups === undefined???')
         p.groups = {}
     }
     if(p.groups[groupId] == undefined) p.groups[groupId] = { rd: false, wrt: false, crt: false, del: false };

@@ -140,12 +140,9 @@ export const tree = async (req: Request, user: User) => {
                node[f.id] = f;
             });
         });
-
-        console.log(res);
         return res;
     }
     catch(e) {
-        console.log(e);
         throw { status: 500, reason: 'Failed to load file tree.' };
     }
 }

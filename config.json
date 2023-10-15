@@ -1,5 +1,6 @@
 {
   "port": "5432",
   "autoCreateDirectory": true,
-  "requireAccept": true
+  "requireAccept": true,
+  "errorHeader": "X-TCM-Error"
 }
